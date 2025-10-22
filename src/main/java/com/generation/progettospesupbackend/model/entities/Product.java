@@ -1,4 +1,4 @@
-package com.generation.progettospesupbackend.entities.model;
+package com.generation.progettospesupbackend.model.entities;
 
 import jakarta.persistence.*;
 

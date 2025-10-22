@@ -66,15 +66,17 @@ public class TestScrape
 
         try(BufferedReader reader = new BufferedReader(new FileReader("tuttilink.txt")))
         {
+//            while(reader.readLine() != null)
+//            {
 
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
 
-            // vai direttamente alla pagina prodotti (assumendo il profilo è già loggato)
-            driver.get("https://it.everli.com/s#/locations/12923/stores/9550/categories/3/100113");
+                // vai direttamente alla pagina prodotti (assumendo il profilo è già loggato)
+                driver.get("https://it.everli.com/s#/locations/12923/stores/9550/categories/3/100113");
 
-            // scrolla fino in fondo per caricare tutti i prodotti (infinite scroll)
-            JavascriptExecutor js = (JavascriptExecutor) driver;
-            long lastHeight = (long) js.executeScript("return document.body.scrollHeight");
+                // scrolla fino in fondo per caricare tutti i prodotti (infinite scroll)
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+                long lastHeight = (long) js.executeScript("return document.body.scrollHeight");
 
             while (true) {
                 // Scroll in fondo alla pagina

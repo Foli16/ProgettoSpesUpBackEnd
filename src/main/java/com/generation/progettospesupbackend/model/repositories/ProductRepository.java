@@ -1,6 +1,6 @@
-package com.generation.progettospesupbackend.entities.repositories;
+package com.generation.progettospesupbackend.model.repositories;
 
-import com.generation.progettospesupbackend.entities.model.Product;
+import com.generation.progettospesupbackend.model.entities.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
