@@ -1,12 +1,11 @@
 package com.generation.progettospesupbackend.entities.model;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 
 import java.util.Set;
 
-import jakarta.persistence.Entity;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,9 +14,11 @@ import lombok.Setter;
 @Setter
 public class Product extends BaseEntity
 {
-
+	@NotBlank @NotNull
 	private String name;
+	@NotNull @NotBlank @Enumerated(EnumType.STRING)
 	private Category category;
+	@NotNull @NotBlank
 	private String description;
 	private String imgUrl;
 

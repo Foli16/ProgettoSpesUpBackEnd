@@ -7,6 +7,8 @@ import jakarta.persistence.OneToMany;
 import java.util.Set;
 
 import jakarta.persistence.Entity;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,6 +17,7 @@ import lombok.Setter;
 @Setter
 public class Supermarket extends BaseEntity
 {
+	@NotNull @NotBlank
 	private String name;
 
 	@OneToMany(mappedBy = "supermarket",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
