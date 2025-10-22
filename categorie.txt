@@ -1,0 +1,21 @@
+Frutta e verdura:3
+Carne e Pesce:1
+Formaggi:4
+Latte:6
+Pane:8
+Pasta:12
+Vegetariano:32
+Sughi, Scatolame e Condimenti:27
+Uova:28
+Caffè:10
+Colazione:11
+Surgelati:15
+Acqua:101366
+Birreria:16
+Cura della persona:19
+Pulizia della casa:20
+Cura casa:21
+Bimbi:18
+Amici e animali:17
+Giardino e Hobby:13
+Cartoleria:101656
