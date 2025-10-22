@@ -1,10 +1,7 @@
 package com.generation.progettospesupbackend;
 
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -66,51 +63,67 @@ public class TestScrape
 
         try(BufferedReader reader = new BufferedReader(new FileReader("tuttilink.txt")))
         {
-//            while(reader.readLine() != null)
-//            {
+            int counter = 1;
+            while(counter < 5)
+            {
 
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
 
                 // vai direttamente alla pagina prodotti (assumendo il profilo è già loggato)
-                driver.get("https://it.everli.com/s#/locations/12923/stores/9550/categories/3/100113");
+                //driver.get("https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113");
+                String[] rigaSplittata = reader.readLine().split(";");
+                String supermercato = rigaSplittata[0].split("-")[0];
+                String categoria = rigaSplittata[0].split("-")[1];
+                driver.get(rigaSplittata[1]);
 
                 // scrolla fino in fondo per caricare tutti i prodotti (infinite scroll)
                 JavascriptExecutor js = (JavascriptExecutor) driver;
                 long lastHeight = (long) js.executeScript("return document.body.scrollHeight");
 
-            while (true) {
-                // Scroll in fondo alla pagina
-                js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
+                while (true)
+                {
+                    // Scroll in fondo alla pagina
+                    js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
 
-                // Attendi un po' per permettere il caricamento dei nuovi prodotti
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    // Attendi un po' per permettere il caricamento dei nuovi prodotti
+                    try
+                    {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException e)
+                    {
+                        e.printStackTrace();
+                    }
+
+                    // Controlla se l'altezza della pagina è cambiata
+                    long newHeight = (long) js.executeScript("return document.body.scrollHeight");
+
+                    if (newHeight == lastHeight)
+                    {
+                        break; // siamo in fondo
+                    }
+
+                    lastHeight = newHeight;
                 }
 
-                // Controlla se l'altezza della pagina è cambiata
-                long newHeight = (long) js.executeScript("return document.body.scrollHeight");
+                // aspetta che gli elementi dei prodotti siano visibili
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".product-data")));
 
-                if (newHeight == lastHeight) {
-                    break; // siamo in fondo
+                List<WebElement> products = driver.findElements(By.cssSelector(".product-data"));
+
+
+                for (WebElement product : products)
+                {
+                    String name = safeGetText(product, By.cssSelector(".name"));
+                    String descr = safeGetText(product, By.cssSelector(".description"));
+                    String price = safeGetText(product, By.cssSelector(".price .vader-dynamic-string div"));
+                    String originalPrice = safeGetText(product, By.cssSelector(".full-price .vader-dynamic-string div"));
+                    String pricePerType = safeGetText(product, By.cssSelector(".price-per-type"));
+                    String supermarket = supermercato;
+                    String category = categoria;
+                    System.out.println(name + " - " + descr + " - " + price + " - "+ originalPrice + " - "+pricePerType + " - "+supermarket+" - "+category);
                 }
-
-                lastHeight = newHeight;
+                counter++;
             }
-
-            // aspetta che gli elementi dei prodotti siano visibili
-            wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".product-data")));
-
-            List<WebElement> products = driver.findElements(By.cssSelector(".product-data"));
-
-
-            for (WebElement product : products) {
-                String name = safeGetText(product, By.cssSelector(".name"));
-                String descr = safeGetText(product, By.cssSelector(".description"));
-                System.out.println(name + " - " + descr);
-            }
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -128,7 +141,7 @@ public class TestScrape
             WebElement el = parent.findElement(selector);
             return el.getText().trim();
         } catch (Exception e) {
-            return ""; // o null o un placeholder
+            return null; // o null o un placeholder
         }
     }
 }
