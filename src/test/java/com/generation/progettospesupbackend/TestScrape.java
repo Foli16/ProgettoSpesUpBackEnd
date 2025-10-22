@@ -11,6 +11,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -62,7 +64,7 @@ public class TestScrape
 
         WebDriver driver = new ChromeDriver(options);
 
-        try
+        try(BufferedReader reader = new BufferedReader(new FileReader("tuttilink.txt")))
         {
 
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
