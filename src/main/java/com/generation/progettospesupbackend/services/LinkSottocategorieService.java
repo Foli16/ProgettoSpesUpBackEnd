@@ -12,7 +12,6 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,7 +24,7 @@ public class LinkSottocategorieService
 {
     @Autowired
     SupermarketRepository repo;
-    public List<String> leggiSottocategorie()
+    public List<String> scrapeLinkSottocategorie()
     {
         WebDriver driver = initializeWebDriver();
         List<Supermarket> supermarkets = repo.findAll();
@@ -59,8 +58,6 @@ public class LinkSottocategorieService
                 {
                     String href = tagA.getAttribute("href");
                     String[] splittatoPerSlash = href.split("/");
-//                    Supermarket sup = repo.findSupermarketByStoreUrl(splittatoPerSlash[splittatoPerSlash.length-4]);
-//                    sup.getSubcategoryUrls().add(splittatoPerSlash[splittatoPerSlash.length-1]);
                     String linkCompleto = link+"/"+splittatoPerSlash[splittatoPerSlash.length-1];
                     linkCompleti.add(linkCompleto);
                 }

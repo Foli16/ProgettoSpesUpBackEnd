@@ -3,8 +3,10 @@ package com.generation.progettospesupbackend.services;
 import com.generation.progettospesupbackend.model.entities.Category;
 import com.generation.progettospesupbackend.model.entities.PriceTrend;
 import com.generation.progettospesupbackend.model.entities.Product;
+import com.generation.progettospesupbackend.model.entities.Supermarket;
 import com.generation.progettospesupbackend.model.repositories.PriceTrendRepository;
 import com.generation.progettospesupbackend.model.repositories.ProductRepository;
+import com.generation.progettospesupbackend.model.repositories.SupermarketRepository;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -20,7 +22,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 @Service
 public class ScraperService
@@ -31,6 +32,8 @@ public class ScraperService
     private ProductRepository repo;
     @Autowired
     private PriceTrendRepository prRepo;
+    @Autowired
+    private SupermarketRepository supRepo;
 
     /**
 	 * Uno scraper ideato per estrarre i dati dei prodotti dalle pagine delle sottocategorie su Everli. <br/>
@@ -78,7 +81,7 @@ public class ScraperService
         WebDriver driver = new ChromeDriver(options);
         try//(BufferedReader reader = new BufferedReader(new FileReader("tuttilink.txt")))
         {
-            for(String link : serv.leggiSottocategorie())
+            for(String link : serv.scrapeLinkSottocategorie())
             {
 
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
@@ -140,10 +143,11 @@ public class ScraperService
             p.setName(safeGetText(product, By.cssSelector(".name")));
             p.setDescription(safeGetText(product, By.cssSelector(".description")));
 //                    https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113
-            String[] cat = link.split("/");
+            String[] splittato = link.split("/");
             for(Category c : Category.values())
-                if(c.getUrlCategoria().equalsIgnoreCase(cat[cat.length-2]))
+                if(c.getUrlCategoria().equalsIgnoreCase(splittato[splittato.length-2]))
                     p.setCategory(c);
+
             PriceTrend pr = new PriceTrend();
             pr.convertAndSetPrice(safeGetText(product, By.cssSelector(".price .vader-dynamic-string div")));
 //                    1,39 €
@@ -152,8 +156,12 @@ public class ScraperService
 //                    2,80 €/kg
             p.addPrice(pr);
 
+            Supermarket sup = supRepo.findSupermarketByStoreUrl(splittato[splittato.length-4]);
+            sup.addPrice(pr);
+
             prRepo.save(pr);
             repo.save(p);
+            supRepo.save(sup);
         }
     }
 
