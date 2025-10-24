@@ -16,11 +16,10 @@ import java.time.LocalDate;
 public class PriceTrend extends BaseEntity
 {
 	@PositiveOrZero
-	private double price;
+	private Double price;
 	@PositiveOrZero
-	private double originalPrice;
-	@PositiveOrZero
-	private double pricePerType;
+	private Double originalPrice;
+	private String pricePerType;
 	private LocalDate startDate;
 	private LocalDate endDate;
 
@@ -28,4 +27,27 @@ public class PriceTrend extends BaseEntity
 	private Product product;
 	@ManyToOne(fetch = FetchType.EAGER,cascade = CascadeType.ALL)
 	private Supermarket supermarket;
+
+	//setter specifici nelle classi per fare le conversioni
+	public void convertAndSetPrice(String price)
+	{
+		if(price == null)
+		{
+			this.price = null;
+			return;
+		}
+		String[] splittato = price.split(",");
+		this.price = Double.parseDouble(splittato[0] + splittato[1].substring(0,2));
+	}
+
+	public void convertAndSetOriginalPrice(String originalPrice)
+	{
+		if(originalPrice == null)
+		{
+			this.originalPrice = null;
+			return;
+		}
+		String[] splittato = originalPrice.split(",");
+		this.originalPrice = Double.parseDouble(splittato[0] + splittato[1].substring(0,2));
+	}
 }

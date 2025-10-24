@@ -2,6 +2,7 @@ package com.generation.progettospesupbackend.model.entities;
 
 import jakarta.persistence.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,12 @@ public class Product extends BaseEntity
 	private String imgUrl;
 
 	@OneToMany(mappedBy = "product",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
-	private Set<PriceTrend> priceTrends;
+	private Set<PriceTrend> priceTrends = new HashSet<>();
+
+	public void addPrice(PriceTrend p)
+	{
+		priceTrends.add(p);
+		p.setProduct(this);
+	}
 
 }

@@ -1,28 +1,43 @@
-package com.generation.progettospesupbackend;
+package com.generation.progettospesupbackend.services;
 
-import org.junit.jupiter.api.Test;
-import org.openqa.selenium.*;
+import com.generation.progettospesupbackend.model.entities.Category;
+import com.generation.progettospesupbackend.model.entities.PriceTrend;
+import com.generation.progettospesupbackend.model.entities.Product;
+import com.generation.progettospesupbackend.model.repositories.PriceTrendRepository;
+import com.generation.progettospesupbackend.model.repositories.ProductRepository;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-
-@SpringBootTest
-public class TestScrape
+@Service
+public class ScraperService
 {
+    @Autowired
+    private LinkSottocategorieService serv;
+    @Autowired
+    private ProductRepository repo;
+    @Autowired
+    private PriceTrendRepository prRepo;
 
-    @Test
-    void provaConProfiloChrome() {
+    /**
+	 * Uno scraper ideato per estrarre i dati dei prodotti dalle pagine delle sottocategorie su Everli. <br/>
+	 * Pagina di esempio: <a href="https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113">https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113</a><br/>
+     *
+	 */
+    public void scrape() {
         // path al chromedriver
         System.setProperty("webdriver.chrome.driver", "C:/tools/chromedriver.exe");
 
@@ -61,21 +76,15 @@ public class TestScrape
         // options.addArguments("--headless=new"); // non consigliato qui
 
         WebDriver driver = new ChromeDriver(options);
-        List<String> boh = new ArrayList<>();
-        //reminder: modificare metodi per farli funzionare con dati da db (senza file .txt)
         try//(BufferedReader reader = new BufferedReader(new FileReader("tuttilink.txt")))
         {
-            for(String link : boh)
+            for(String link : serv.leggiSottocategorie())
             {
 
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
 
                 // vai direttamente alla pagina prodotti (assumendo il profilo è già loggato)
                 driver.get(link);
-//                String[] rigaSplittata = reader.readLine().split(";");
-//                String supermercato = rigaSplittata[0].split("-")[0];
-//                String categoria = rigaSplittata[0].split("-")[1];
-//                driver.get(rigaSplittata[1]);
 
                 // scrolla fino in fondo per caricare tutti i prodotti (infinite scroll)
                 JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -109,34 +118,9 @@ public class TestScrape
                 // aspetta che gli elementi dei prodotti siano visibili
                 wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector(".vader-product")));
 
-//                List<WebElement> products = driver.findElements(By.cssSelector(".product-data"));
-//
-//
-//                for (WebElement product : products)
-//                {
-//                    String name = safeGetText(product, By.cssSelector(".name"));
-//                    String descr = safeGetText(product, By.cssSelector(".description"));
-//                    String price = safeGetText(product, By.cssSelector(".price .vader-dynamic-string div"));
-//                    String originalPrice = safeGetText(product, By.cssSelector(".full-price .vader-dynamic-string div"));
-//                    String pricePerType = safeGetText(product, By.cssSelector(".price-per-type"));
-//                    String supermarket = supermercato;
-//                    String category = categoria;
-//                    System.out.println(name + " - " + descr + " - " + price + " - "+ originalPrice + " - "+pricePerType + " - "+supermarket+" - "+category);
-//                }
                 List<WebElement> products = driver.findElements(By.cssSelector(".vader-product"));
 
-
-                for (WebElement product : products)
-                {
-                    String imgUrl = product.findElement(By.cssSelector("img")).getAttribute("src");
-                    String name = safeGetText(product, By.cssSelector(".name"));
-                    String descr = safeGetText(product, By.cssSelector(".description"));
-                    String price = safeGetText(product, By.cssSelector(".price .vader-dynamic-string div"));
-                    String originalPrice = safeGetText(product, By.cssSelector(".full-price .vader-dynamic-string div"));
-                    String pricePerType = safeGetText(product, By.cssSelector(".price-per-type"));
-                    System.out.println(name + " - " + descr + " - " + price + " - "+ originalPrice + " - "+pricePerType);
-                    System.out.println(imgUrl);
-                }
+                salvaProdotti(link, products);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -144,6 +128,32 @@ public class TestScrape
             // Chiudi il browser alla fine del test:
             // Se vuoi tenere la sessione aperta per debug, commenta la riga seguente.
             driver.quit();
+        }
+    }
+
+    private void salvaProdotti(String link, List<WebElement> products)
+    {
+        for (WebElement product : products)
+        {
+            Product p = new Product();
+            p.setImgUrl(product.findElement(By.cssSelector("img")).getAttribute("src"));
+            p.setName(safeGetText(product, By.cssSelector(".name")));
+            p.setDescription(safeGetText(product, By.cssSelector(".description")));
+//                    https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113
+            String[] cat = link.split("/");
+            for(Category c : Category.values())
+                if(c.getUrlCategoria().equalsIgnoreCase(cat[cat.length-2]))
+                    p.setCategory(c);
+            PriceTrend pr = new PriceTrend();
+            pr.convertAndSetPrice(safeGetText(product, By.cssSelector(".price .vader-dynamic-string div")));
+//                    1,39 €
+            pr.convertAndSetOriginalPrice(safeGetText(product, By.cssSelector(".full-price .vader-dynamic-string div")));
+            pr.setPricePerType(safeGetText(product, By.cssSelector(".price-per-type")));
+//                    2,80 €/kg
+            p.addPrice(pr);
+
+            prRepo.save(pr);
+            repo.save(p);
         }
     }
 

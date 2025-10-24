@@ -4,6 +4,7 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import jakarta.persistence.Entity;
@@ -19,8 +20,20 @@ public class Supermarket extends BaseEntity
 {
 	@NotNull @NotBlank
 	private String name;
+	@NotNull @NotBlank
+	private String locationUrl;
+	@NotNull @NotBlank
+	private String storeUrl;
+	@NotNull
+	private Set<String> subcategoryUrls = new HashSet<>();
 
 	@OneToMany(mappedBy = "supermarket",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
-	private Set<PriceTrend> priceTrends;
+	private Set<PriceTrend> priceTrends = new HashSet<>();
+
+	public void addPrice(PriceTrend p)
+	{
+		priceTrends.add(p);
+		p.setSupermarket(this);
+	}
 
 }
