@@ -24,8 +24,6 @@ public class Supermarket extends BaseEntity
 	private String locationUrl;
 	@NotNull @NotBlank
 	private String storeUrl;
-	@NotNull
-	private Set<String> subcategoryUrls = new HashSet<>();
 
 	@OneToMany(mappedBy = "supermarket",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
 	private Set<PriceTrend> priceTrends = new HashSet<>();
