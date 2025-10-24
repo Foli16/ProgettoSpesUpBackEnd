@@ -25,7 +25,8 @@ public class LinkSottocategorieService
 {
     @Autowired
     SupermarketRepository repo;
-    public List<String> leggiSottocategorie() throws FileNotFoundException {
+    public List<String> leggiSottocategorie()
+    {
         WebDriver driver = initializeWebDriver();
         List<Supermarket> supermarkets = repo.findAll();
 
