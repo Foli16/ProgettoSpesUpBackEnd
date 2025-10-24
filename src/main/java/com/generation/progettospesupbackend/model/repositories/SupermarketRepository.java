@@ -8,5 +8,4 @@ import java.util.UUID;
 
 public interface SupermarketRepository extends JpaRepository<Supermarket, UUID>
 {
-	Supermarket findSupermarketByStoreUrl(String storeUrl);
 }
