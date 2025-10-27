@@ -33,4 +33,12 @@ public enum Category
 	{
 		this.urlCategoria = url;
 	}
+
+	public static Category getByUrl(String cat)
+	{
+		for (Category c : Category.values())
+			if (c.getUrlCategoria().equalsIgnoreCase(cat))
+				return c;
+		return null;
+	}
 }

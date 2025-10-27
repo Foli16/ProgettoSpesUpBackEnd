@@ -17,11 +17,13 @@ public class Product extends BaseEntity
 {
 	@NotBlank @NotNull
 	private String name;
-	@NotNull @NotBlank @Enumerated(EnumType.STRING)
+	@NotNull @Enumerated(EnumType.STRING)
 	private Category category;
 	@NotNull @NotBlank
 	private String description;
 	private String imgUrl;
+//	@NotNull @NotBlank
+//	private String subCategory;
 
 	@OneToMany(mappedBy = "product",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
 	private Set<PriceTrend> priceTrends = new HashSet<>();

@@ -22,10 +22,11 @@ public class PriceTrend extends BaseEntity
 	private String pricePerType;
 	private LocalDate startDate;
 	private LocalDate endDate;
+	private boolean active;
 
-	@ManyToOne(fetch = FetchType.EAGER,cascade = CascadeType.ALL)
+	@ManyToOne(fetch = FetchType.EAGER)
 	private Product product;
-	@ManyToOne(fetch = FetchType.EAGER,cascade = CascadeType.ALL)
+	@ManyToOne(fetch = FetchType.EAGER)
 	private Supermarket supermarket;
 
 	//setter specifici nelle classi per fare le conversioni
@@ -37,7 +38,7 @@ public class PriceTrend extends BaseEntity
 			return;
 		}
 		String[] splittato = price.split(",");
-		this.price = Double.parseDouble(splittato[0] + splittato[1].substring(0,2));
+		this.price = Double.parseDouble(splittato[0] +"."+ splittato[1].substring(0,2));
 	}
 
 	public void convertAndSetOriginalPrice(String originalPrice)
@@ -48,6 +49,6 @@ public class PriceTrend extends BaseEntity
 			return;
 		}
 		String[] splittato = originalPrice.split(",");
-		this.originalPrice = Double.parseDouble(splittato[0] + splittato[1].substring(0,2));
+		this.originalPrice = Double.parseDouble(splittato[0] +"."+ splittato[1].substring(0,2));
 	}
 }

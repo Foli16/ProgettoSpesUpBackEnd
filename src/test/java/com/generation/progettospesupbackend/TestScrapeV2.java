@@ -1,4 +1,4 @@
-package com.generation.progettospesupbackend.services;
+package com.generation.progettospesupbackend;
 
 import com.generation.progettospesupbackend.model.entities.Category;
 import com.generation.progettospesupbackend.model.entities.PriceTrend;
@@ -7,6 +7,9 @@ import com.generation.progettospesupbackend.model.entities.Supermarket;
 import com.generation.progettospesupbackend.model.repositories.PriceTrendRepository;
 import com.generation.progettospesupbackend.model.repositories.ProductRepository;
 import com.generation.progettospesupbackend.model.repositories.SupermarketRepository;
+import com.generation.progettospesupbackend.services.LinkSottocategorieService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
@@ -16,31 +19,118 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
-@Service
-public class ScraperService
+
+@SpringBootTest
+public class TestScrapeV2
 {
+    @Autowired
+    SupermarketRepository supRepo;
     @Autowired
     private LinkSottocategorieService serv;
     @Autowired
     private ProductRepository repo;
     @Autowired
     private PriceTrendRepository prRepo;
-    @Autowired
-    private SupermarketRepository supRepo;
-
-    /**
-     * Uno scraper ideato per estrarre i dati dei prodotti dalle pagine delle sottocategorie su Everli. <br/>
-     * Pagina di esempio: <a href="https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113">https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113</a><br/>
-     */
-    public void scrape()
+    public List<String> scrapeLinkSottocategorie()
     {
+        WebDriver driver = initializeWebDriver();
+        List<Supermarket> supermarkets = supRepo.findAll();
+
+        List<String> categoriesLinks = new ArrayList<>();
+        for(Supermarket sup: supermarkets)
+            for(Category c: Category.values())
+            {
+                String[] locationEStore = new String[2];
+                locationEStore[0] = sup.getLocationUrl();
+                locationEStore[1] = sup.getStoreUrl();
+                String urlDaScrapare = obtainUrl(locationEStore,c.getUrlCategoria());
+                categoriesLinks.add(urlDaScrapare);
+            }
+
+        List<String> linkCompleti = new ArrayList<>();
+
+        try
+        {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
+
+            for(String link: categoriesLinks)
+            {
+                driver.get(link);
+                Thread.sleep(1500);
+
+                List<WebElement> linksSottocategorie = driver.findElements(By.cssSelector("a[aria-label='Vedi tutto']"));
+
+
+                for(WebElement tagA :linksSottocategorie)
+                {
+                    String href = tagA.getAttribute("href");
+                    String[] splittatoPerSlash = href.split("/");
+                    String linkCompleto = link+"/"+splittatoPerSlash[splittatoPerSlash.length-1];
+                    linkCompleti.add(linkCompleto);
+                }
+            }
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+        return linkCompleti;
+    }
+
+    private  WebDriver initializeWebDriver() {
+        System.setProperty("webdriver.chrome.driver", "C:/tools/chromedriver.exe");
+        String userDataDir = "C:/ChromeProfiles/EverliProfile";
+        String profileDirectory = "Default"; // se non vuoi specificare, imposta a null o ""
+        try {
+            Path p = Paths.get(userDataDir);
+            if (!Files.exists(p)) {
+                Files.createDirectories(p);
+            }
+        } catch (Exception e) {
+            System.err.println("Impossibile creare la cartella user-data-dir: " + e.getMessage());
+        }
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("user-data-dir=" + userDataDir);
+        if (profileDirectory != null && !profileDirectory.isBlank()) {
+            options.addArguments("profile-directory=" + profileDirectory);
+        }
+
+        options.addArguments("--no-first-run");
+        options.addArguments("--no-default-browser-check");
+
+        WebDriver driver = new ChromeDriver(options);
+        return driver;
+    }
+
+    private String obtainUrl(String[] locationEStore,String cat)
+    {
+        //String intestazione=sup[0]+"-"+cat;
+        String baseUrl="https://it.everli.com/s#/locations/[location]/stores/[store]/categories/[category]";
+        baseUrl=baseUrl.replace("[location]",locationEStore[0]).replace("[store]",locationEStore[1]).replace("[category]",cat);
+        return baseUrl;
+    }
+
+    @BeforeEach
+    public void refreshDb()
+    {
+        prRepo.deleteAll();
+        repo.deleteAll();
+    }
+
+    @Test
+    public void scrape() {
+
         // path al chromedriver
         System.setProperty("webdriver.chrome.driver", "C:/tools/chromedriver.exe");
 
@@ -56,23 +146,19 @@ public class ScraperService
         String profileDirectory = "Default"; // se non vuoi specificare, imposta a null o ""
 
         // crea la cartella se non esiste (utile la prima volta)
-        try
-        {
+        try {
             Path p = Paths.get(userDataDir);
-            if (!Files.exists(p))
-            {
+            if (!Files.exists(p)) {
                 Files.createDirectories(p);
             }
-        } catch (Exception e)
-        {
+        } catch (Exception e) {
             System.err.println("Impossibile creare la cartella user-data-dir: " + e.getMessage());
             // proseguiamo comunque: Chrome potrebbe crearla da solo
         }
 
         ChromeOptions options = new ChromeOptions();
         options.addArguments("user-data-dir=" + userDataDir);
-        if (profileDirectory != null && !profileDirectory.isBlank())
-        {
+        if (profileDirectory != null && !profileDirectory.isBlank()) {
             options.addArguments("profile-directory=" + profileDirectory);
         }
 
@@ -81,11 +167,12 @@ public class ScraperService
         options.addArguments("--no-default-browser-check");
         // NON usare --headless se vuoi riutilizzare estensioni/sessioni in modo affidabile
         // options.addArguments("--headless=new"); // non consigliato qui
+        List<String> linkCompleti = scrapeLinkSottocategorie();
 
         WebDriver driver = new ChromeDriver(options);
         try//(BufferedReader reader = new BufferedReader(new FileReader("tuttilink.txt")))
         {
-            for (String link : serv.scrapeLinkSottocategorie())
+            for(String link : linkCompleti)
             {
 
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
@@ -129,11 +216,9 @@ public class ScraperService
 
                 salvaProdotti(link, products);
             }
-        } catch (Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
-        } finally
-        {
+        } finally {
             // Chiudi il browser alla fine del test:
             // Se vuoi tenere la sessione aperta per debug, commenta la riga seguente.
             driver.quit();
@@ -145,14 +230,15 @@ public class ScraperService
         for (WebElement product : products)
         {
             Product p = new Product();
+           // p.setImgUrl(product.findElement(By.cssSelector("img")).getAttribute("src"));
             p.setImgUrl(safeGetSrcText(product, By.cssSelector("img")));
             p.setName(safeGetText(product, By.cssSelector(".name")));
             p.setDescription(safeGetText(product, By.cssSelector(".description")));
 //                    https://it.everli.com/s#/locations/13647/stores/5540/categories/3/100113
             String[] splittato = link.split("/");
-            Supermarket sup = supRepo.findSupermarketByStoreUrl(splittato[splittato.length - 4]);
-            for (Category c : Category.values())
-                if (c.getUrlCategoria().equalsIgnoreCase(splittato[splittato.length - 2]))
+            Supermarket sup = supRepo.findSupermarketByStoreUrl(splittato[splittato.length-4]);
+            for(Category c : Category.values())
+                if(c.getUrlCategoria().equalsIgnoreCase(splittato[splittato.length-2]))
                     p.setCategory(c);
             p = repo.save(p);
 
@@ -171,25 +257,19 @@ public class ScraperService
     /**
      * Metodo helper per leggere testo in modo più robusto (evita NoSuchElementException).
      */
-    private String safeGetText(WebElement parent, By selector)
-    {
-        try
-        {
+    private String safeGetText(WebElement parent, By selector) {
+        try {
             WebElement el = parent.findElement(selector);
             return el.getText().trim();
-        } catch (Exception e)
-        {
+        } catch (Exception e) {
             return null; // o null o un placeholder
         }
     }
 
-    private String safeGetSrcText(WebElement parent, By selector)
-    {
-        try
-        {
+    private String safeGetSrcText(WebElement parent, By selector) {
+        try {
             return parent.findElement(selector).getAttribute("src");
-        } catch (Exception e)
-        {
+        } catch (Exception e) {
             return null; // o null o un placeholder
         }
     }
