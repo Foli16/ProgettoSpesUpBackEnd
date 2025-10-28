@@ -49,10 +49,35 @@ public class AuthController
         return userService.convertToUserDto(user);
     }
 
+    @PutMapping("/changepass")
+    public void changePassword(@CookieValue(required = false) String token, @RequestBody RegisterDto dto)
+    {
+        if(token == null)
+            return;
+        userService.changePassword(token, dto);
+    }
+
+    @PutMapping("/changeusername")
+    public void changeUsername(@CookieValue(required = false) String token, @RequestBody RegisterDto dto)
+    {
+        if(token == null)
+            return;
+        userService.changeUsername(token, dto);
+    }
+
+    @DeleteMapping("/deleteuser")
+    public void deleteUser(@CookieValue(required = false) String token)
+    {
+        if(token == null)
+            return;
+        userService.deleteUser(token);
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String gestisciTutto(Exception e)
     {
         return "Operazione fallita, ulteriori dettagli "+e.getMessage();
     }
+
 }
