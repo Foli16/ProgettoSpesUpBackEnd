@@ -21,10 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
 @Service
 public class Scraper
@@ -162,7 +160,7 @@ public class Scraper
 		productsToPriceTrend = new HashMap<>();
 		for(WebElement el : extractElements(link))
 		{
-			Product p = extractProduct(el);
+			Product p = extractProduct(el, link);
 			PriceTrend pt = extractPriceTrend(el);
 			productsToPriceTrend.put(p,pt);
 		}
@@ -187,7 +185,7 @@ public class Scraper
 	 * @param element È il WebElement (in questo caso quello etichettato dalla classe .vader-product) che contiene tutte le informazioni su un singolo prodotto
 	 * @return
 	 */
-	private Product extractProduct(WebElement element)
+	private Product extractProduct(WebElement element, String link)
 	{
 		Product p = new Product();
 		p.setImgUrl(safeGetSrcText(element, By.cssSelector("img")));
@@ -203,16 +201,48 @@ public class Scraper
 		for(Product p : productsToPriceTrend.keySet() )
 		{
 			PriceTrend pt = productsToPriceTrend.get(p);
-			Product prod = prodRepo.existsByImgUrlAndName(p.getImgUrl(),p.getName()) 	?
-						   prodRepo.findByImgUrlAndName(p.getImgUrl(),p.getName() )	:
-						   prodRepo.save(p)							;
+//			Product prod = prodRepo.existsByImgUrlAndName(p.getImgUrl(),p.getName()) 	?
+//						   prodRepo.findByImgUrlAndName(p.getImgUrl(),p.getName() )	:
+//						   prodRepo.save(p)							;
 
+			if(prodRepo.existsByImgUrlAndName(p.getImgUrl(),p.getName()))
+			{
+				Product prodottoEsistente = prodRepo.findByImgUrlAndName(p.getImgUrl(),p.getName());
+				PriceTrend oldPt = prodottoEsistente.getActivePrice(supermercatoCorrente);
+				if(oldPt == null)
+				{
+					saveNewPriceTrend(prodottoEsistente, pt);
+					return;
+				}
+				if(!Objects.equals(oldPt.getPrice(), pt.getPrice()))
+				{
+					oldPt.setEndDate(LocalDate.now());
+					ptRepo.save(oldPt);
+					pt.setStartDate(LocalDate.now());
+					pt.setProduct(prodottoEsistente);
+					pt.setSupermarket(supermercatoCorrente);
+					ptRepo.save(pt);
+				}
+			}
+			else
+			{
+				saveNewPriceTrend(p, pt);
+			}
 			//occhio perchè non è detto che vada sempre creato un price trend, dovreste confrontare i prezzi
 			//per vedere se sono cambiati e nel caso aggiornare quello vecchio
-			pt.setProduct(prod);
-			pt.setSupermarket(supermercatoCorrente);
-			ptRepo.save(pt);
+//			pt.setProduct(prod);
+//			pt.setSupermarket(supermercatoCorrente);
+//			ptRepo.save(pt);
 		}
+	}
+
+	private void saveNewPriceTrend(Product p, PriceTrend pt)
+	{
+		p = prodRepo.save(p);
+		pt.setStartDate(LocalDate.now());
+		pt.setProduct(p);
+		pt.setSupermarket(supermercatoCorrente);
+		ptRepo.save(pt);
 	}
 
 

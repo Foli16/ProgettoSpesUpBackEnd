@@ -22,7 +22,7 @@ public class PriceTrend extends BaseEntity
 	private String pricePerType;
 	private LocalDate startDate;
 	private LocalDate endDate;
-	private boolean active;
+	//private boolean active;
 
 	@ManyToOne(fetch = FetchType.EAGER)
 	private Product product;
@@ -50,5 +50,10 @@ public class PriceTrend extends BaseEntity
 		}
 		String[] splittato = originalPrice.split(",");
 		this.originalPrice = Double.parseDouble(splittato[0] +"."+ splittato[1].substring(0,2));
+	}
+
+	public boolean isActive()
+	{
+		return endDate == null;
 	}
 }

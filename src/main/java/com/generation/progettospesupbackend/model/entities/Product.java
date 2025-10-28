@@ -2,6 +2,7 @@ package com.generation.progettospesupbackend.model.entities;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -34,4 +35,13 @@ public class Product extends BaseEntity
 		p.setProduct(this);
 	}
 
+	public PriceTrend getActivePrice(Supermarket sup)
+	{
+		for (PriceTrend pr : priceTrends)
+		{
+			if(pr.isActive() && pr.getSupermarket().equals(sup))
+				return pr;
+		}
+		return null;
+	}
 }
