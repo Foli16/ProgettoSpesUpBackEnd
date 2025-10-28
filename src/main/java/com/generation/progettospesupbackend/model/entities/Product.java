@@ -23,11 +23,16 @@ public class Product extends BaseEntity
 	@NotNull @NotBlank
 	private String description;
 	private String imgUrl;
+	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "productsInList")
+	private Set<ShoppingList> shoppingLists = new HashSet<>();
+	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "favouriteProducts")
+	private Set<User> users = new HashSet<>();
 //	@NotNull @NotBlank
 //	private String subCategory;
 
 	@OneToMany(mappedBy = "product",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
 	private Set<PriceTrend> priceTrends = new HashSet<>();
+
 
 	public void addPrice(PriceTrend p)
 	{
@@ -44,4 +49,5 @@ public class Product extends BaseEntity
 		}
 		return null;
 	}
+
 }
