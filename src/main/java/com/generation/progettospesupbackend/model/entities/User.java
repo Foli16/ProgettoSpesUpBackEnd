@@ -26,7 +26,8 @@ public class User extends BaseEntity implements UserDetails
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "product_id")
     )
-    private Set<Product> favouriteProducts = new HashSet<>();
+    private Map<Product, Supermarket> favouriteProducts = new HashMap<>();
+//    private Set<Product> favouriteProducts = new HashSet<>();
 
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER,cascade = CascadeType.ALL)
     private Set<ShoppingList> shoppingLists = new HashSet<>();
