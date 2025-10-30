@@ -1,22 +1,21 @@
 package com.generation.progettospesupbackend.services;
 
 import com.generation.progettospesupbackend.exceptions.InvalidCredentials;
-import com.generation.progettospesupbackend.model.dtos.LoginDto;
-import com.generation.progettospesupbackend.model.dtos.ProductDto;
-import com.generation.progettospesupbackend.model.dtos.RegisterDto;
-import com.generation.progettospesupbackend.model.dtos.UserDto;
+import com.generation.progettospesupbackend.model.dtos.*;
 import com.generation.progettospesupbackend.model.entities.Product;
+import com.generation.progettospesupbackend.model.entities.Supermarket;
 import com.generation.progettospesupbackend.model.entities.User;
 import com.generation.progettospesupbackend.model.repositories.ProductRepository;
+import com.generation.progettospesupbackend.model.repositories.SupermarketRepository;
 import com.generation.progettospesupbackend.model.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService
@@ -27,6 +26,8 @@ public class UserService
     private PasswordEncoder encoder;
     @Autowired
     private ProductRepository prodRepo;
+    @Autowired
+    private SupermarketRepository supRepo;
 
     public String register(RegisterDto registerDto)
     {
@@ -107,31 +108,46 @@ public class UserService
         repo.delete(u);
     }
 
-    public void addFavouriteProduct (String token, UUID id) {
+    public void addFavouriteProduct (String token, UUID productId, UUID supermarketId) {
         User u = findUserByToken(token);
-        Optional<Product> op = prodRepo.findById(id);
-        if(op.isEmpty())
+        Optional<Product> op = prodRepo.findById(productId);
+        Optional<Supermarket> sop = supRepo.findById(supermarketId);
+        if(op.isEmpty() || sop.isEmpty())
             throw new RuntimeException();
 
+        Supermarket s = sop.get();
         Product p = op.get();
-        u.getFavouriteProducts().add(p);
+        u.getFavouriteProducts().put(p,s);
         repo.save(u);
     }
 
     public List<ProductDto> getFavouriteProducts (String token) {
         User u = findUserByToken(token);
-        List<ProductDto> favList = u.getFavouriteProducts().stream().map(p -> convertProductToDto(p)).toList();
+//        List<ProductDto> favList = u.getFavouriteProducts().keySet().stream().map(p -> convertProductToDto(p)).toList();
+        List<ProductDto> favList = new ArrayList<>();
+        for(Product p : u.getFavouriteProducts().keySet())
+        {
+            favList.add(convertProductToDto(p, u.getFavouriteProducts().get(p)));
+        }
         return favList;
     }
 
-    private ProductDto convertProductToDto (Product p) {
+    private ProductDto convertProductToDto (Product p, Supermarket s) {
         ProductDto dto = new ProductDto();
-        dto.setId(p.getId());
-        dto.setName(p.getName());
-        dto.setDescription(p.getDescription());
+        dto.setPriceTrendId(p.getActivePrice(s).getId());
+        dto.setPrice(p.getActivePrice(s).getPrice());
+        dto.setOriginalPrice(p.getActivePrice(s).getOriginalPrice());
+        dto.setPricePerType(p.getActivePrice(s).getPricePerType());
+        dto.setStartDate(p.getActivePrice(s).getStartDate());
+        dto.setEndDate(p.getActivePrice(s).getEndDate());
+        dto.setActive(p.getActivePrice(s).isActive());
+        dto.setProductId(p.getId());
+        dto.setProductName(p.getName());
         dto.setCategory(p.getCategory().toString());
+        dto.setDescription(p.getDescription());
         dto.setImgUrl(p.getImgUrl());
-        dto.setPriceTrends(p.getPriceTrends());
+        dto.setSupermarketId(s.getId());
+        dto.setSupermarketName(s.getName());
 
         return dto;
     }

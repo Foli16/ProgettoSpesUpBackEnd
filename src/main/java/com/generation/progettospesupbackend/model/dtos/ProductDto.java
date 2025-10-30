@@ -1,21 +1,27 @@
 package com.generation.progettospesupbackend.model.dtos;
 
-
-import com.generation.progettospesupbackend.model.entities.PriceTrend;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Set;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
 @Setter
 public class ProductDto
 {
-    private UUID id;
-    private String name;
-    private String category;
-    private String description;
-    private String imgUrl;
-    private Set<PriceTrend> priceTrends;
+	private UUID priceTrendId;
+	private Double price;
+	private Double originalPrice;
+	private String pricePerType;
+	private LocalDate startDate;
+	private LocalDate endDate;
+	private boolean active;
+	private UUID productId;
+	private String productName;
+	private String category;
+	private String description;
+	private String imgUrl;
+	private UUID supermarketId;
+	private String supermarketName;
 }

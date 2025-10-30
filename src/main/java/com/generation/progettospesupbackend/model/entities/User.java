@@ -20,13 +20,19 @@ public class User extends BaseEntity implements UserDetails
     @Column(unique = true)
     private String username;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "user_to_product",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "product_id")
-    )
-    private Set<Product> favouriteProducts = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private Set<UserFavouriteProduct> favouriteProductEntries = new HashSet<>();
+//    private Set<Product> favouriteProducts = new HashSet<>();
+
+    @Transient
+    public Map<Product, Supermarket> getFavouriteProducts() {
+        Map<Product, Supermarket> map = new HashMap<>();
+        for (UserFavouriteProduct entry : favouriteProductEntries) {
+            map.put(entry.getProduct(), entry.getSupermarket());
+        }
+        return map;
+    }
 
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER,cascade = CascadeType.ALL)
     private Set<ShoppingList> shoppingLists = new HashSet<>();
