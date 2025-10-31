@@ -61,7 +61,7 @@ public class SupermarketService
 		return dto;
 	}
 
-	private ProductDto convertEntireProductToDto(PriceTrend pt)
+	public ProductDto convertEntireProductToDto(PriceTrend pt)
 	{
 		ProductDto dto = new ProductDto();
 		dto.setPriceTrendId(pt.getId());
