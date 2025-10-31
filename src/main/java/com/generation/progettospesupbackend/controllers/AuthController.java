@@ -63,14 +63,19 @@ public class AuthController
         if(token == null)
             return;
         userService.changeUsername(token, dto);
+
     }
 
     @DeleteMapping("/deleteuser")
-    public void deleteUser(@CookieValue(required = false) String token)
+    public void deleteUser(@CookieValue(required = false) String token, HttpServletResponse response)
     {
         if(token == null)
             return;
         userService.deleteUser(token);
+        Cookie cookie = new Cookie("token", null);
+        cookie.setMaxAge(0);
+        cookie.setPath("/api");
+        response.addCookie(cookie);
     }
 
     @ExceptionHandler(Exception.class)
