@@ -12,25 +12,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class SupermarketService
-{
+public class SupermarketService {
 	@Autowired
 	private SupermarketRepository supRepo;
 
-	public List<SupermarketNameDto> getSupermarketNames()
-	{
+	public List<SupermarketNameDto> getSupermarketNames() {
 		return supRepo.findAll().stream().map(s -> convertEntityToDto(s)).toList();
 	}
 
-	public List<ProductDto> getProductsBySupermarket(List<String> supermarketNames)
-	{
+	public List<ProductDto> getProductsBySupermarket(List<String> supermarketNames) {
 		List<Supermarket> supermarkets = new ArrayList<>();
-		for(String name : supermarketNames)
-		{
-			for(Supermarket sup : supRepo.findAll())
-			{
-				if(sup.getName().equals(name))
-				{
+		for (String name : supermarketNames) {
+			for (Supermarket sup : supRepo.findAll()) {
+				if (sup.getName().equals(name)) {
 					supermarkets.add(sup);
 				}
 			}
@@ -40,10 +34,8 @@ public class SupermarketService
 //			supermarkets = supRepo.findAll().stream().filter(s -> s.getName().equals(name)).toList();
 //		}
 		List<ProductDto> dtos = new ArrayList<>();
-		for(Supermarket s : supermarkets)
-		{
-			for(PriceTrend pt : s.getPriceTrends())
-			{
+		for (Supermarket s : supermarkets) {
+			for (PriceTrend pt : s.getPriceTrends()) {
 				dtos.add(convertEntireProductToDto(pt));
 			}
 		}
@@ -54,15 +46,13 @@ public class SupermarketService
 		return dtos;
 	}
 
-	private SupermarketNameDto convertEntityToDto(Supermarket s)
-	{
+	private SupermarketNameDto convertEntityToDto(Supermarket s) {
 		SupermarketNameDto dto = new SupermarketNameDto();
 		dto.setName(s.getName());
 		return dto;
 	}
 
-	public ProductDto convertEntireProductToDto(PriceTrend pt)
-	{
+	public ProductDto convertEntireProductToDto(PriceTrend pt) {
 		ProductDto dto = new ProductDto();
 		dto.setPriceTrendId(pt.getId());
 		dto.setPrice(pt.getPrice());
@@ -73,12 +63,20 @@ public class SupermarketService
 		dto.setActive(pt.isActive());
 		dto.setProductId(pt.getProduct().getId());
 		dto.setProductName(pt.getProduct().getName());
-		dto.setCategory(pt.getProduct().getCategory().toString());
+		dto.setCategory(convertEnumCategory(pt.getProduct().getCategory().toString()));
 		dto.setDescription(pt.getProduct().getDescription());
 		dto.setImgUrl(pt.getProduct().getImgUrl());
 		dto.setSupermarketId(pt.getSupermarket().getId());
 		dto.setSupermarketName(pt.getSupermarket().getName());
 
 		return dto;
+	}
+
+	private String convertEnumCategory(String s)
+	{
+		String restoFrase = s.replace("_", " ").substring(1).toLowerCase();
+		String fraseCompleta = s.substring(0, 1).toUpperCase() + restoFrase;
+
+		return fraseCompleta;
 	}
 }
