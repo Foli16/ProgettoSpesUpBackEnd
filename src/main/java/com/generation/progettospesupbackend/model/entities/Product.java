@@ -23,8 +23,6 @@ public class Product extends BaseEntity
 	@NotNull @NotBlank
 	private String description;
 	private String imgUrl;
-	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "productsInList")
-	private Set<ShoppingList> shoppingLists = new HashSet<>();
 	@OneToMany(mappedBy = "product")
 	private Set<UserFavouriteProduct> favouritedByUsers = new HashSet<>();
 //	@NotNull @NotBlank

@@ -1,14 +1,13 @@
 package com.generation.progettospesupbackend.model.entities;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -28,6 +27,8 @@ public class PriceTrend extends BaseEntity
 	private Product product;
 	@ManyToOne(fetch = FetchType.EAGER)
 	private Supermarket supermarket;
+	@ManyToMany(fetch = FetchType.EAGER, mappedBy = "productsInList")
+	private Set<ShoppingList> shoppingLists = new HashSet<>();
 
 	//setter specifici nelle classi per fare le conversioni
 	public void convertAndSetPrice(String price)

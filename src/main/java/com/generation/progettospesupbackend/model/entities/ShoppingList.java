@@ -18,9 +18,9 @@ public class ShoppingList extends BaseEntity
     @JoinTable(
             name = "shoppingList_to_product",
             joinColumns = @JoinColumn(name = "shoppingList_id"),
-            inverseJoinColumns = @JoinColumn(name = "product_id")
+            inverseJoinColumns = @JoinColumn(name = "priceTrend_id")
     )
-    private Set<Product> productsInList = new HashSet<>();
+    private Set<PriceTrend> productsInList = new HashSet<>();
     private boolean cart;
 
     @ManyToOne(fetch = FetchType.EAGER)
