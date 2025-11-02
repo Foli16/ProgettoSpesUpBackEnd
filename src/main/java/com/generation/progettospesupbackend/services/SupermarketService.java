@@ -79,4 +79,9 @@ public class SupermarketService {
 
 		return fraseCompleta;
 	}
+
+	public String convertCategoryToEnum(String s)
+	{
+		return s.replace(" ","_").toUpperCase();
+	}
 }

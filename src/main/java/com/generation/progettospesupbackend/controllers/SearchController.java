@@ -39,6 +39,7 @@ public class SearchController
 	@PostMapping("/category/{cat}")
 	public List<ProductDto> getProductsByCategory(@PathVariable String cat, @RequestBody List<String> supermarketNames)
 	{
-		return prodServ.getProductsByCategory(cat, supermarketNames);
+		String convertedCat = supServ.convertCategoryToEnum(cat);
+		return prodServ.getProductsByCategory(convertedCat, supermarketNames);
 	}
 }
