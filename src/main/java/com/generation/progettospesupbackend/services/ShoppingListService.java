@@ -55,12 +55,17 @@ public class ShoppingListService
 		if(sop.isEmpty())
 			return;
 		ShoppingList sl = sop.get();
+		PriceTrend daRim = null;
 		for(PriceTrend trend : sl.getProductsInList())
 			if(trend.getId().equals(priceTrendId))
 			{
-				sl.getProductsInList().remove(trend);
-				shRepo.save(sl);
+//				sl.getProductsInList().remove(trend);
+//				shRepo.save(sl);
+				daRim = trend;
+
 			}
+		sl.getProductsInList().remove(daRim);
+		shRepo.save(sl);
 		if(sl.getProductsInList().isEmpty())
 			shRepo.delete(sl);
 	}
@@ -85,6 +90,7 @@ public class ShoppingListService
 					pd.setProductName(pt.getProduct().getName());
 					pd.setPrice(pt.getPrice());
 					pd.setSupermarketName(pt.getSupermarket().getName());
+					pd.setPriceTrendId(pt.getId());
 					products.add(pd);
 
 					// totale del carrello
