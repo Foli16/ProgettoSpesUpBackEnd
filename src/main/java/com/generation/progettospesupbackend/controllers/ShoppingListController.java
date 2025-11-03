@@ -41,7 +41,7 @@ public class ShoppingListController
 
 	@GetMapping("/compare")
 	public Map<String, Set<ProductDto>> compareCart(
-			@RequestHeader("Authorization") String token) {
+			@CookieValue (required = false) String token) {
 		// su postman in headers key = authorization e value il token utente
 		return shoppingListService.compareCartWithOtherSm(token);
 	}
