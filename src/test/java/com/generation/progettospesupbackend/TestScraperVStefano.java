@@ -16,25 +16,14 @@ import java.util.List;
 public class TestScraperVStefano
 {
 	@Autowired
-	LinkCategorieRepo linkRepo;
-
-	@Autowired
-	Scraper serv;
-//	@Autowired
-//	LinkSottocategorieService linkServ;
+	RunScraping scrap;
 
 	@Test
-	void Test()
+	void run()
 	{
-		List<LinkCategorie> links = linkRepo.findAll();
-
-		List<String> tuttiLinks = links.stream().map(l->l.getValue()).toList();
-
-		List<String> dueLinks = new ArrayList<>();
-		dueLinks.add(tuttiLinks.get(0));
-		dueLinks.add(tuttiLinks.get(1));
-
-		serv.runScraping(dueLinks);
-
+		scrap.run();
 	}
+
+
+
 }

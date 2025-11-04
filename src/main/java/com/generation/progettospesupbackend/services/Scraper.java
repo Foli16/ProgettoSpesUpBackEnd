@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.*;
@@ -31,6 +32,11 @@ public class Scraper
 	private final PriceTrendRepository ptRepo;
 	private final ProductRepository prodRepo;
 	private WebDriver driver;
+
+	// --- MODIFICA ---
+	// Numero massimo di tentativi per link
+	private static final int MAX_RETRIES = 3;
+
 	public Scraper(SupermarketRepository supRepo, PriceTrendRepository ptRepo, ProductRepository prodRepo)
 	{
 		this.supRepo = supRepo;
@@ -44,16 +50,55 @@ public class Scraper
 	private Map<Product, PriceTrend> productsToPriceTrend;
 
 	/**
-	 * Questo metodo prende in ingresso una lista di links che va a scrapare
+	 * Questo metodo prende in ingresso una lista di links che va a scrapare.
+	 * Implementa una logica di retry per i link che falliscono.
 	 * @param links
 	 */
 	public void runScraping(List<String> links)
 	{
-		this.driver=generateDriver();
-		for(String link : links)
+		// --- MODIFICA --- Logica di retry
+		List<String> linksToProcess = new ArrayList<>(links);
+		Map<String, Integer> retryCounts = new HashMap<>();
+
+		try
 		{
-			fillMapProductsPriceTrends(link);
-			save();
+			this.driver = generateDriver();
+
+			while (!linksToProcess.isEmpty())
+			{
+				String link = linksToProcess.remove(0); // Prende e rimuove il primo link
+				int currentRetries = retryCounts.getOrDefault(link, 0);
+
+				try
+				{
+					System.out.println("Inizio scraping per (tentativo " + (currentRetries + 1) + "/" + MAX_RETRIES + "): " + link);
+
+					// Esegue l'intero processo per un link: scrape + save
+					fillMapProductsPriceTrends(link);
+					save(); // Questo metodo ora è "batchizzato"
+
+					System.out.println("Salvataggio completato per: " + link);
+
+				} catch (Exception e)
+				{
+					System.err.println("Errore durante l'elaborazione del link: " + link);
+					e.printStackTrace();
+
+					if (currentRetries < MAX_RETRIES - 1)
+					{
+						retryCounts.put(link, currentRetries + 1);
+						linksToProcess.add(link); // Aggiunge il link fallito in fondo alla coda per un nuovo tentativo
+						System.err.println("Link " + link + " accodato per un nuovo tentativo.");
+					} else
+					{
+						System.err.println("Link " + link + " ha fallito dopo " + MAX_RETRIES + " tentativi. Si rinuncia.");
+					}
+				}
+			}
+			// --- FINE MODIFICA ---
+
+		} catch (Exception e) {
+			System.err.println("Errore fatale nell'inizializzazione dello Scraper: " + e.getMessage());
 		}
 	}
 
@@ -66,10 +111,10 @@ public class Scraper
 		// -------------------------------------------------------
 		// CONFIGURA QUI sotto il profilo che vuoi usare
 		// Esempi:
-		//  userDataDir = "C:/ChromeProfiles/EverliProfile"
-		//  oppure usare il profilo Chrome reale:
-		//  userDataDir = "C:/Users/tuoUser/AppData/Local/Google/Chrome/User Data"
-		//  profileDirectory = "Default" oppure "Profile 1"
+		//  userDataDir = "C:/ChromeProfiles/EverliProfile"
+		//  oppure usare il profilo Chrome reale:
+		//  userDataDir = "C:/Users/tuoUser/AppData/Local/Google/Chrome/User Data"
+		//  profileDirectory = "Default" oppure "Profile 1"
 		// -------------------------------------------------------
 		String userDataDir = "C:/ChromeProfiles/EverliProfile";
 		String profileDirectory = "Default"; // se non vuoi specificare, imposta a null o ""
@@ -105,7 +150,7 @@ public class Scraper
 		return driver;
 	}
 
-	
+
 	private List<WebElement> extractElements(String link)
 	{
 
@@ -196,53 +241,95 @@ public class Scraper
 	}
 
 
+	/**
+	 * // --- MODIFICA ---
+	 * Metodo di salvataggio "batchizzato".
+	 * Salva i nuovi prodotti singolarmente (necessario per ottenere l'ID).
+	 * Raccoglie tutti i PriceTrend (nuovi e da aggiornare) e li salva
+	 * in due chiamate batch (saveAll) per efficienza.
+	 */
 	private void save()
 	{
-		for(Product p : productsToPriceTrend.keySet() )
-		{
-			PriceTrend pt = productsToPriceTrend.get(p);
-//			Product prod = prodRepo.existsByImgUrlAndName(p.getImgUrl(),p.getName()) 	?
-//						   prodRepo.findByImgUrlAndName(p.getImgUrl(),p.getName() )	:
-//						   prodRepo.save(p)							;
+		List<PriceTrend> trendsToSave = new ArrayList<>();   // Batch list per nuovi PT
+		List<PriceTrend> trendsToUpdate = new ArrayList<>(); // Batch list per vecchi PT da chiudere
 
-			if(prodRepo.existsByImgUrlAndName(p.getImgUrl(),p.getName()))
+		for(Map.Entry<Product, PriceTrend> entry : productsToPriceTrend.entrySet())
+		{
+			Product p = entry.getKey();
+			PriceTrend pt = entry.getValue();
+
+			// Ottimizzazione: usa findBy... invece di exists... + findBy...
+			Product prodottoEsistente = prodRepo.findByImgUrlAndName(p.getImgUrl(), p.getName());
+
+			if(prodottoEsistente != null)
 			{
-				Product prodottoEsistente = prodRepo.findByImgUrlAndName(p.getImgUrl(),p.getName());
+				// Prodotto Esistente: la logica può essere batchizzata
 				PriceTrend oldPt = prodottoEsistente.getActivePrice(supermercatoCorrente);
+
 				if(oldPt == null)
 				{
-					saveNewPriceTrend(prodottoEsistente, pt);
-					return;
+					// Nessun prezzo attivo, aggiungi quello nuovo alla lista batch
+					saveNewPriceTrend(prodottoEsistente, pt, trendsToSave); // Helper modificato
+					// --- BUG FIX --- Rimosso il 'return' prematuro
 				}
-				if(!Objects.equals(oldPt.getPrice(), pt.getPrice()))
+				else if(!Objects.equals(oldPt.getPrice(), pt.getPrice()))
 				{
+					// Il prezzo è cambiato: chiudi il vecchio, aggiungi il nuovo
 					oldPt.setEndDate(LocalDate.now());
-					ptRepo.save(oldPt);
+					trendsToUpdate.add(oldPt); // Aggiungi alla lista batch di aggiornamento
+
 					pt.setStartDate(LocalDate.now());
 					pt.setProduct(prodottoEsistente);
 					pt.setSupermarket(supermercatoCorrente);
-					ptRepo.save(pt);
+					trendsToSave.add(pt); // Aggiungi alla lista batch di salvataggio
 				}
+				// else: prezzo identico, non fare nulla
 			}
 			else
 			{
+				// Prodotto Nuovo: non può essere batchizzato facilmente
+				// a causa della dipendenza dall'ID. Usiamo il metodo helper originale.
 				saveNewPriceTrend(p, pt);
 			}
-			//occhio perchè non è detto che vada sempre creato un price trend, dovreste confrontare i prezzi
-			//per vedere se sono cambiati e nel caso aggiornare quello vecchio
-//			pt.setProduct(prod);
-//			pt.setSupermarket(supermercatoCorrente);
-//			ptRepo.save(pt);
+		}
+
+		// --- MODIFICA --- Esegui le operazioni batch
+		if (!trendsToUpdate.isEmpty()) {
+			System.out.println("Aggiornamento di " + trendsToUpdate.size() + " PriceTrend (chiusura).");
+			ptRepo.saveAll(trendsToUpdate);
+		}
+		if (!trendsToSave.isEmpty()) {
+			System.out.println("Salvataggio di " + trendsToSave.size() + " nuovi PriceTrend.");
+			ptRepo.saveAll(trendsToSave);
 		}
 	}
 
+	/**
+	 * Helper per salvare un *nuovo* prodotto e il suo primo PriceTrend.
+	 * Questo non è batchizzato perché pt dipende dall'ID di p.
+	 */
 	private void saveNewPriceTrend(Product p, PriceTrend pt)
 	{
-		p = prodRepo.save(p);
+		System.out.println("Salvataggio nuovo prodotto: " + p.getName());
+		p = prodRepo.save(p); // Salva e ottiene l'ID
+
 		pt.setStartDate(LocalDate.now());
 		pt.setProduct(p);
 		pt.setSupermarket(supermercatoCorrente);
-		ptRepo.save(pt);
+		ptRepo.save(pt); // Salva il PT associato
+	}
+
+	/**
+	 * // --- NUOVO METODO HELPER (Overload) ---
+	 * Helper per aggiungere un PriceTrend a un prodotto *esistente*
+	 * alla lista batch, senza salvarlo immediatamente.
+	 */
+	private void saveNewPriceTrend(Product prodottoEsistente, PriceTrend pt, List<PriceTrend> trendsToSave)
+	{
+		pt.setStartDate(LocalDate.now());
+		pt.setProduct(prodottoEsistente);
+		pt.setSupermarket(supermercatoCorrente);
+		trendsToSave.add(pt); // Aggiunge alla lista per il batch
 	}
 
 
@@ -251,7 +338,19 @@ public class Scraper
 		try
 		{
 			WebElement el = parent.findElement(selector);
-			return el.getText().trim();
+			String text = el.getText();
+			if (text == null || text.isEmpty()) {
+				return null;
+			}
+			// 1. Normalizza l'Unicode (es. 'e' + '´' diventa 'é')
+			//    Questo risolve i problemi di accenti "strani"
+			text = Normalizer.normalize(text, Normalizer.Form.NFC);
+			// 2. Sostituisce QUALSIASI carattere di spaziatura (incluso \u00A0)
+			//    con un singolo spazio normale, poi fa il trim.
+			//    Questo risolve gli spazi "strani".
+			text = text.replaceAll("\\s+", " ").trim();
+			return text;
+
 		} catch (Exception e)
 		{
 			return null; // o null o un placeholder
