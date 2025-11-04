@@ -173,7 +173,7 @@ public class Scraper
 			// Attendi un po' per permettere il caricamento dei nuovi prodotti
 			try
 			{
-				Thread.sleep(3000);
+				Thread.sleep(5000);
 			} catch (InterruptedException e)
 			{
 				e.printStackTrace();
