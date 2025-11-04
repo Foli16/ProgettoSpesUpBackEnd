@@ -25,7 +25,7 @@ public class Supermarket extends BaseEntity
 	@NotNull @NotBlank
 	private String storeUrl;
 
-	@OneToMany(mappedBy = "supermarket",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
+	@OneToMany(mappedBy = "supermarket",cascade = CascadeType.ALL)
 	private Set<PriceTrend> priceTrends = new HashSet<>();
 
 	public void addPrice(PriceTrend p)
