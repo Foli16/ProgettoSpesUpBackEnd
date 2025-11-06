@@ -55,7 +55,7 @@ public class ShoppingListController
 
 
 	@PostMapping("/cart/best-market")
-	public Map<String, Object> getBestSupermarket(@CookieValue(required = false) String token, List<String> supermarketNames) {
+	public Map<String, Object> getBestSupermarket(@CookieValue(required = false) String token, @RequestBody List<String> supermarketNames) {
 		return shoppingListService.getBestSupermarketCartForUserSelection(token, supermarketNames);
 	}
 

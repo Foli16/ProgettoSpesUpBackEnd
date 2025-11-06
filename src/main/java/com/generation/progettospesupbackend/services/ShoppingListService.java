@@ -219,59 +219,196 @@ public class ShoppingListService
 		for (PriceTrend cartPt : cart.getProductsInList()) {
 			Product product = cartPt.getProduct();
 			if (product == null) continue;
+			for (PriceTrend pt : allTrends)
+				{
+					if (pt.getProduct() != null && pt.getProduct().getId().equals(product.getId()))
+					{
 
-			for (PriceTrend pt : allTrends) {
+						String smName = pt.getSupermarket().getName();
 
-				if (pt.getProduct() != null && pt.getProduct().getId().equals(product.getId())) {
+						// consideriamo SOLO i supermercati selezionati dall'utente
+						if (!selectedMarkets.contains(smName)) continue;
 
-					String smName = pt.getSupermarket().getName();
+						productsByMarket.putIfAbsent(smName, new HashSet<>());
+						productsByMarket.get(smName).add(pt);
 
-					// consideriamo SOLO i supermercati selezionati dall'utente
-					if (!selectedMarkets.contains(smName)) continue;
+//					totalByMarket.put(smName,
+//							totalByMarket.getOrDefault(smName, 0.0) + pt.getPrice());
+					}
+				}
 
-					productsByMarket.putIfAbsent(smName, new HashSet<>());
-					productsByMarket.get(smName).add(pt);
+		}
 
-					totalByMarket.put(smName,
-							totalByMarket.getOrDefault(smName, 0.0) + pt.getPrice());
+		double ilPiuBasso = 0;
+		String bestMarket = null;
+		Set<PriceTrend> listaPiuEconomica = new HashSet<>();
+		for(String key : productsByMarket.keySet())
+		{
+			double somma = 0;
+			for(PriceTrend pt : productsByMarket.get(key))
+			{
+				somma += pt.getPrice();
+			}
+			if(ilPiuBasso == 0)
+			{
+				ilPiuBasso = somma;
+				listaPiuEconomica = productsByMarket.get(key);
+				bestMarket = key;
+			}
+			else
+			{
+				if(somma<ilPiuBasso)
+				{
+					ilPiuBasso = somma;
+					listaPiuEconomica = productsByMarket.get(key);
+					bestMarket = key;
 				}
 			}
 		}
 
 		// Trova il supermercato con il totale più basso
-		String bestMarket = null;
-		double lowest = Double.MAX_VALUE;
+//		String bestMarket = null;
+//		double lowest = Double.MAX_VALUE;
+//
+//		for (Map.Entry<String, Double> entry : totalByMarket.entrySet()) {
+//			if (entry.getValue() < lowest) {
+//				lowest = entry.getValue();
+//				bestMarket = entry.getKey();
+//			}
+//		}
 
-		for (Map.Entry<String, Double> entry : totalByMarket.entrySet()) {
-			if (entry.getValue() < lowest) {
-				lowest = entry.getValue();
-				bestMarket = entry.getKey();
-			}
-		}
-
-		if (bestMarket == null) {
-			return null;
-		}
+//		if (bestMarket == null) {
+//			return null;
+//		}
 
 		// Trasformo PriceTrend -> ProductDto per output pulito
 		Set<ProductDto> productsDto = new HashSet<>();
-		for (PriceTrend pt : productsByMarket.get(bestMarket)) {
+		for (PriceTrend pt : listaPiuEconomica) {
 			ProductDto dto = new ProductDto();
 			dto.setProductId(pt.getProduct().getId());
 			dto.setProductName(pt.getProduct().getName());
 			dto.setPrice(pt.getPrice());
 			dto.setSupermarketName(pt.getSupermarket().getName());
 			dto.setPriceTrendId(pt.getId());
+			dto.setImgUrl(pt.getProduct().getImgUrl());
+			dto.setDescription(pt.getProduct().getDescription());
 			productsDto.add(dto);
 		}
 
 		Map<String, Object> result = new HashMap<>();
 		result.put("bestSupermarket", bestMarket);
-		result.put("total", lowest);
+		result.put("total", ilPiuBasso);
 		result.put("products", productsDto);
 
 		return result;
 	}
+
+//	public Map<String, Object> getBestSupermarketCartForUserSelection(String token, List<String> selectedMarkets) {
+//
+//		User user = uServ.findUserByToken(token);
+//		Optional<ShoppingList> cartOpt = shRepo.findShoppingListByUserAndCart(user, true);
+//
+//		if (cartOpt.isEmpty()) {
+//			return null;
+//		}
+//
+//		ShoppingList cart = cartOpt.get();
+//		List<PriceTrend> allTrends = ptRepo.findAll();
+//
+//		// Mappa supermarket -> (set di PriceTrend + totale)
+//		Map<String, Set<PriceTrend>> productsByMarket = new HashMap<>();
+//		Map<String, Double> totalByMarket = new HashMap<>();
+//
+//		for (PriceTrend cartPt : cart.getProductsInList()) {
+//			Product product = cartPt.getProduct();
+//			if (product == null) continue;
+//
+//			for (String sName : selectedMarkets)
+//			{
+//				for (PriceTrend pt : ptRepo.findPriceTrendsBySupermarket_Name(sName))
+//				{
+//					if (pt.getProduct() != null && pt.getProduct().getId().equals(product.getId()))
+//					{
+//
+//						String smName = pt.getSupermarket().getName();
+//
+//						// consideriamo SOLO i supermercati selezionati dall'utente
+//						if (!selectedMarkets.contains(smName)) continue;
+//
+//						productsByMarket.putIfAbsent(smName, new HashSet<>());
+//						productsByMarket.get(smName).add(pt);
+//
+////					totalByMarket.put(smName,
+////							totalByMarket.getOrDefault(smName, 0.0) + pt.getPrice());
+//					}
+//				}
+//
+//			}
+//		}
+//
+//		double ilPiuBasso = 0;
+//		String bestMarket = null;
+//		Set<PriceTrend> listaPiuEconomica = new HashSet<>();
+//		for(String key : productsByMarket.keySet())
+//		{
+//			double somma = 0;
+//			for(PriceTrend pt : productsByMarket.get(key))
+//			{
+//				somma += pt.getPrice();
+//			}
+//			if(ilPiuBasso == 0)
+//			{
+//				ilPiuBasso = somma;
+//				listaPiuEconomica = productsByMarket.get(key);
+//				bestMarket = key;
+//			}
+//			else
+//			{
+//				if(somma<ilPiuBasso)
+//				{
+//					ilPiuBasso = somma;
+//					listaPiuEconomica = productsByMarket.get(key);
+//					bestMarket = key;
+//				}
+//			}
+//		}
+//
+//		// Trova il supermercato con il totale più basso
+////		String bestMarket = null;
+////		double lowest = Double.MAX_VALUE;
+////
+////		for (Map.Entry<String, Double> entry : totalByMarket.entrySet()) {
+////			if (entry.getValue() < lowest) {
+////				lowest = entry.getValue();
+////				bestMarket = entry.getKey();
+////			}
+////		}
+//
+////		if (bestMarket == null) {
+////			return null;
+////		}
+//
+//		// Trasformo PriceTrend -> ProductDto per output pulito
+//		Set<ProductDto> productsDto = new HashSet<>();
+//		for (PriceTrend pt : listaPiuEconomica) {
+//			ProductDto dto = new ProductDto();
+//			dto.setProductId(pt.getProduct().getId());
+//			dto.setProductName(pt.getProduct().getName());
+//			dto.setPrice(pt.getPrice());
+//			dto.setSupermarketName(pt.getSupermarket().getName());
+//			dto.setPriceTrendId(pt.getId());
+//			dto.setImgUrl(pt.getProduct().getImgUrl());
+//			dto.setDescription(pt.getProduct().getDescription());
+//			productsDto.add(dto);
+//		}
+//
+//		Map<String, Object> result = new HashMap<>();
+//		result.put("bestSupermarket", bestMarket);
+//		result.put("total", ilPiuBasso);
+//		result.put("products", productsDto);
+//
+//		return result;
+//	}
 
 
 
