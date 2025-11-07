@@ -4,10 +4,8 @@ import com.generation.progettospesupbackend.model.dtos.ProductDto;
 import com.generation.progettospesupbackend.model.dtos.ShoppingListDto;
 import com.generation.progettospesupbackend.services.ShoppingListService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -54,10 +52,13 @@ public class ShoppingListController
 	}
 
 
-	@PostMapping("/cart/best-market")
-	public Map<String, Object> getBestSupermarket(@CookieValue(required = false) String token, @RequestBody List<String> supermarketNames) {
-		return shoppingListService.getBestSupermarketCartForUserSelection(token, supermarketNames);
+	@GetMapping("/cart/comparison")
+	public Map<String, Set<ProductDto>> getComparisonLists(@CookieValue(required = false) String token) {
+		return shoppingListService.getComparisonLists(token);
 	}
 
-
+	@GetMapping("/listsbymarket")
+	public Map<String, Set<ProductDto>> getListsBySupermarket(@CookieValue(required = false) String token) {
+		return shoppingListService.getListsBySupermarket(token);
+	}
 }

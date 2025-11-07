@@ -24,4 +24,5 @@ public class ProductDto
 	private String imgUrl;
 	private UUID supermarketId;
 	private String supermarketName;
+	private Boolean found;
 }

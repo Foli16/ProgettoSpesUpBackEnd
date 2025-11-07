@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Service
@@ -23,6 +25,8 @@ public class ShoppingListService
 	ShoppingListRepository shRepo;
 	@Autowired
 	UserService uServ;
+	@Autowired
+	SupermarketService supServ;
 
 	public void addToCart(String token, UUID priceTrendId)
 	{
@@ -107,6 +111,29 @@ public class ShoppingListService
 		return dto;
 	}
 
+	public Map<String, Set<ProductDto>> getListsBySupermarket(String token)
+	{
+		User u = uServ.findUserByToken(token);
+		Optional<ShoppingList> cartOpt = shRepo.findShoppingListByUserAndCart(u, true);
+
+		if(cartOpt.isEmpty())
+			return null;
+
+		ShoppingList cart = cartOpt.get();
+
+		Map<String, Set<ProductDto>> separatedLists = new HashMap<>();
+
+		for(PriceTrend pt : cart.getProductsInList())
+		{
+			String supName = pt.getSupermarket().getName();
+			if (!separatedLists.containsKey(supName))
+				separatedLists.put(supName, new HashSet<>());
+
+			separatedLists.get(supName).add(supServ.convertEntireProductToDto(pt));
+		}
+
+		return separatedLists;
+	}
 
 	//Comparazione
 	public Map<String, Set<ProductDto>> compareCartWithOtherSm(String token) {
@@ -200,7 +227,7 @@ public class ShoppingListService
 		return totals;
 	}
 
-	public Map<String, Object> getBestSupermarketCartForUserSelection(String token, List<String> selectedMarkets) {
+	public Map<String, Set<ProductDto>> getComparisonLists(String token) {
 
 		User user = uServ.findUserByToken(token);
 		Optional<ShoppingList> cartOpt = shRepo.findShoppingListByUserAndCart(user, true);
@@ -210,205 +237,62 @@ public class ShoppingListService
 		}
 
 		ShoppingList cart = cartOpt.get();
-		List<PriceTrend> allTrends = ptRepo.findAll();
 
-		// Mappa supermarket -> (set di PriceTrend + totale)
+		//Questo Set include tutti i nomi dei supermercati che compaiono nel carrello
+		//Es: Se non ci sono PriceTrend associati alla "Bennet" nel carrello, il nome non finirà in questo Set
+		Set<String> supermarketsInCart = new HashSet<>();
+		for(PriceTrend pt : cart.getProductsInList())
+			supermarketsInCart.add(pt.getSupermarket().getName());
+
+
+		//Questa mappa conterrà i PriceTrend (valori) divisi per nome Supermarket (chiave) che sono associati allo stesso singolo prodotto a cui è associato un singolo PT presente nel carrello
+		//Es: Se un PT nel carrello è associato al prodotto "Fusilli Barilla", qui dentro finiranno tutti i PT anch'essi associati a questo prodotto, ma solo se appartengono a uno dei supermercati che compaiono nel carrello
 		Map<String, Set<PriceTrend>> productsByMarket = new HashMap<>();
-		Map<String, Double> totalByMarket = new HashMap<>();
+		//Questa mappa conterrà i PriceTrend che non hanno avuto un riscontro con quelli nel carrello, che saranno quindi definiti come "non trovati" nella lista di comparazione del sito
+		//P.S. la mappa è sempre chiave: nome supermercato, valore: Set di suoi PT
+		Map<String, Set<PriceTrend>> productsByMarketNotFound = new HashMap<>();
 
+		//Ciclo tutti i PT del carrello
 		for (PriceTrend cartPt : cart.getProductsInList()) {
 			Product product = cartPt.getProduct();
 			if (product == null) continue;
-			for (PriceTrend pt : allTrends)
+			//Per ogni PT del carrello ciclo ogni PT di ognuno dei supermercati che compaiono nel carrello
+			for (String sName : supermarketsInCart)
+			{
+				boolean found = false;
+				for (PriceTrend pt : ptRepo.findPriceTrendsBySupermarket_Name(sName))
 				{
-					if (pt.getProduct() != null && pt.getProduct().getId().equals(product.getId()))
+					//Se l'id del prodotto associato al PT nel carrello è lo stesso del prodotto associato al PT che sta venendo iterato in questo momento
+					//(che deve essere anche active ndr) allora viene inserito nella mappa productsByMarket (quella dei prodotti trovati)
+					//altrimenti, se non c'è alcun prodotto del supermercato in analisi che possiede lo stesso id, finirà nell'altra mappa (quella dei prodotti non trovati)
+					if (pt.getProduct() != null && pt.isActive() && pt.getProduct().getId().equals(product.getId()))
 					{
-
-						String smName = pt.getSupermarket().getName();
-
-						// consideriamo SOLO i supermercati selezionati dall'utente
-						if (!selectedMarkets.contains(smName)) continue;
-
-						productsByMarket.putIfAbsent(smName, new HashSet<>());
-						productsByMarket.get(smName).add(pt);
-
-//					totalByMarket.put(smName,
-//							totalByMarket.getOrDefault(smName, 0.0) + pt.getPrice());
+						productsByMarket.putIfAbsent(sName, new HashSet<>());
+						productsByMarket.get(sName).add(pt);
+						found = true;
 					}
 				}
-
-		}
-
-		double ilPiuBasso = 0;
-		String bestMarket = null;
-		Set<PriceTrend> listaPiuEconomica = new HashSet<>();
-		for(String key : productsByMarket.keySet())
-		{
-			double somma = 0;
-			for(PriceTrend pt : productsByMarket.get(key))
-			{
-				somma += pt.getPrice();
-			}
-			if(ilPiuBasso == 0)
-			{
-				ilPiuBasso = somma;
-				listaPiuEconomica = productsByMarket.get(key);
-				bestMarket = key;
-			}
-			else
-			{
-				if(somma<ilPiuBasso)
+				if(!found)
 				{
-					ilPiuBasso = somma;
-					listaPiuEconomica = productsByMarket.get(key);
-					bestMarket = key;
+					productsByMarketNotFound.putIfAbsent(sName, new HashSet<>());
+					productsByMarketNotFound.get(sName).add(cartPt);
 				}
 			}
 		}
 
-		// Trova il supermercato con il totale più basso
-//		String bestMarket = null;
-//		double lowest = Double.MAX_VALUE;
-//
-//		for (Map.Entry<String, Double> entry : totalByMarket.entrySet()) {
-//			if (entry.getValue() < lowest) {
-//				lowest = entry.getValue();
-//				bestMarket = entry.getKey();
-//			}
-//		}
-
-//		if (bestMarket == null) {
-//			return null;
-//		}
-
-		// Trasformo PriceTrend -> ProductDto per output pulito
-		Set<ProductDto> productsDto = new HashSet<>();
-		for (PriceTrend pt : listaPiuEconomica) {
-			ProductDto dto = new ProductDto();
-			dto.setProductId(pt.getProduct().getId());
-			dto.setProductName(pt.getProduct().getName());
-			dto.setPrice(pt.getPrice());
-			dto.setSupermarketName(pt.getSupermarket().getName());
-			dto.setPriceTrendId(pt.getId());
-			dto.setImgUrl(pt.getProduct().getImgUrl());
-			dto.setDescription(pt.getProduct().getDescription());
-			productsDto.add(dto);
+		Map<String, Set<ProductDto>> results = new HashMap<>();
+		for(String sName : supermarketsInCart)
+		{
+			//Prendo tutti i PriceTrend dentro la mappa productsByMarket con chiave sName e li converto in dto assegnando true alla proprietà found
+			Set<ProductDto> productsFound = productsByMarket.get(sName).stream().map(pt -> {ProductDto dto = supServ.convertEntireProductToDto(pt); dto.setFound(true); return dto;}).collect(Collectors.toSet());
+			//Prendo tutti i PriceTrend dentro la mappa productsByMarketNotFound con chiave sName e li converto in dto assegnando false alla proprietà found
+			Set<ProductDto> productsNotFound = productsByMarketNotFound.get(sName).stream().map(pt -> {ProductDto dto = supServ.convertEntireProductToDto(pt); dto.setFound(false); return dto;}).collect(Collectors.toSet());
+			//Unisco i due set precedenti e li inserisco in una mappa con chiave il nome del supermercato di appartenenza
+			results.put(sName, Stream.concat(productsFound.stream(), productsNotFound.stream()).collect(Collectors.toSet()));
 		}
 
-		Map<String, Object> result = new HashMap<>();
-		result.put("bestSupermarket", bestMarket);
-		result.put("total", ilPiuBasso);
-		result.put("products", productsDto);
-
-		return result;
+		return results;
 	}
-
-//	public Map<String, Object> getBestSupermarketCartForUserSelection(String token, List<String> selectedMarkets) {
-//
-//		User user = uServ.findUserByToken(token);
-//		Optional<ShoppingList> cartOpt = shRepo.findShoppingListByUserAndCart(user, true);
-//
-//		if (cartOpt.isEmpty()) {
-//			return null;
-//		}
-//
-//		ShoppingList cart = cartOpt.get();
-//		List<PriceTrend> allTrends = ptRepo.findAll();
-//
-//		// Mappa supermarket -> (set di PriceTrend + totale)
-//		Map<String, Set<PriceTrend>> productsByMarket = new HashMap<>();
-//		Map<String, Double> totalByMarket = new HashMap<>();
-//
-//		for (PriceTrend cartPt : cart.getProductsInList()) {
-//			Product product = cartPt.getProduct();
-//			if (product == null) continue;
-//
-//			for (String sName : selectedMarkets)
-//			{
-//				for (PriceTrend pt : ptRepo.findPriceTrendsBySupermarket_Name(sName))
-//				{
-//					if (pt.getProduct() != null && pt.getProduct().getId().equals(product.getId()))
-//					{
-//
-//						String smName = pt.getSupermarket().getName();
-//
-//						// consideriamo SOLO i supermercati selezionati dall'utente
-//						if (!selectedMarkets.contains(smName)) continue;
-//
-//						productsByMarket.putIfAbsent(smName, new HashSet<>());
-//						productsByMarket.get(smName).add(pt);
-//
-////					totalByMarket.put(smName,
-////							totalByMarket.getOrDefault(smName, 0.0) + pt.getPrice());
-//					}
-//				}
-//
-//			}
-//		}
-//
-//		double ilPiuBasso = 0;
-//		String bestMarket = null;
-//		Set<PriceTrend> listaPiuEconomica = new HashSet<>();
-//		for(String key : productsByMarket.keySet())
-//		{
-//			double somma = 0;
-//			for(PriceTrend pt : productsByMarket.get(key))
-//			{
-//				somma += pt.getPrice();
-//			}
-//			if(ilPiuBasso == 0)
-//			{
-//				ilPiuBasso = somma;
-//				listaPiuEconomica = productsByMarket.get(key);
-//				bestMarket = key;
-//			}
-//			else
-//			{
-//				if(somma<ilPiuBasso)
-//				{
-//					ilPiuBasso = somma;
-//					listaPiuEconomica = productsByMarket.get(key);
-//					bestMarket = key;
-//				}
-//			}
-//		}
-//
-//		// Trova il supermercato con il totale più basso
-////		String bestMarket = null;
-////		double lowest = Double.MAX_VALUE;
-////
-////		for (Map.Entry<String, Double> entry : totalByMarket.entrySet()) {
-////			if (entry.getValue() < lowest) {
-////				lowest = entry.getValue();
-////				bestMarket = entry.getKey();
-////			}
-////		}
-//
-////		if (bestMarket == null) {
-////			return null;
-////		}
-//
-//		// Trasformo PriceTrend -> ProductDto per output pulito
-//		Set<ProductDto> productsDto = new HashSet<>();
-//		for (PriceTrend pt : listaPiuEconomica) {
-//			ProductDto dto = new ProductDto();
-//			dto.setProductId(pt.getProduct().getId());
-//			dto.setProductName(pt.getProduct().getName());
-//			dto.setPrice(pt.getPrice());
-//			dto.setSupermarketName(pt.getSupermarket().getName());
-//			dto.setPriceTrendId(pt.getId());
-//			dto.setImgUrl(pt.getProduct().getImgUrl());
-//			dto.setDescription(pt.getProduct().getDescription());
-//			productsDto.add(dto);
-//		}
-//
-//		Map<String, Object> result = new HashMap<>();
-//		result.put("bestSupermarket", bestMarket);
-//		result.put("total", ilPiuBasso);
-//		result.put("products", productsDto);
-//
-//		return result;
-//	}
 
 
 
